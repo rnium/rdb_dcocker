@@ -1,0 +1,51 @@
+version: "3.8"
+services:
+  redis:
+    restart: always
+    image: redis:alpine
+    container_name: redis
+
+  db:
+    restart: always
+    image: postgres:15-alpine
+    container_name: database
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  app:
+    restart: always
+    build:
+      context: ./application
+    image: django:app
+    container_name: uwsgi
+    volumes:
+      - ./application:/app
+      - ./sockets:/sockets
+    command: uwsgi /app/uwsgi.ini
+    depends_on:
+      - db
+  
+  nginx:
+    build: ./nginx
+    restart: always
+    container_name: nginx_server
+    volumes:
+      - ./sockets:/sockets
+      - ./application/sec_rdb/static:/static
+      - ./application/sec_rdb/media:/media
+    ports:
+      - 8000:80
+    depends_on:
+      - app
+
+  celery:
+    build: ./celery
+    restart: always
+    container_name: celery_worker
+    volumes:
+      - ./application/sec_rdb:/app
+    command: celery -A config worker -l info

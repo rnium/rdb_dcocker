@@ -1,0 +1,4 @@
+sec_rdb/
+log/
+pgdata/
+sockets/
